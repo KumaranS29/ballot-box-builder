@@ -2,6 +2,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Session, User, AuthError } from '@supabase/supabase-js';
 
 // Types
 export type UserRole = 'admin' | 'candidate' | 'voter';
@@ -24,6 +26,7 @@ interface AuthContextType {
   isAdmin: () => boolean;
   isCandidate: () => boolean;
   isVoter: () => boolean;
+  session: Session | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,61 +41,103 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Check for existing session on component mount
+  // Initialize auth state
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        // Mock auth check - replace with Supabase auth check after integration
-        const savedUser = localStorage.getItem('ballot_box_user');
-        if (savedUser) {
-          setUser(JSON.parse(savedUser));
+    // Set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        setSession(currentSession);
+
+        if (currentSession?.user) {
+          // Fetch user profile from our users table
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('user_id', currentSession.user.id)
+            .single();
+
+          if (userError || !userData) {
+            console.error('Error fetching user data:', userError);
+            setUser(null);
+          } else {
+            setUser({
+              id: currentSession.user.id,
+              email: currentSession.user.email || '',
+              name: userData.name || '',
+              role: userData.role as UserRole,
+              profileImage: userData.profile_image || undefined,
+            });
+          }
+        } else {
+          setUser(null);
         }
-      } catch (error) {
-        console.error('Auth check error:', error);
-      } finally {
+        
         setIsLoading(false);
       }
+    );
+
+    // Check for existing session
+    const initializeAuth = async () => {
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
+      
+      if (initialSession?.user) {
+        // Fetch user profile from our users table
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('user_id', initialSession.user.id)
+          .single();
+
+        if (userError || !userData) {
+          console.error('Error fetching user data:', userError);
+          setUser(null);
+        } else {
+          setUser({
+            id: initialSession.user.id,
+            email: initialSession.user.email || '',
+            name: userData.name || '',
+            role: userData.role as UserRole,
+            profileImage: userData.profile_image || undefined,
+          });
+        }
+      }
+      
+      setIsLoading(false);
     };
 
-    checkAuthStatus();
+    initializeAuth();
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Login function
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Mock login - replace with Supabase auth after integration
-      // This is temporary until Supabase integration
-      const mockUsers = [
-        { id: '1', email: 'admin@example.com', password: 'password', name: 'Admin User', role: 'admin' as UserRole },
-        { id: '2', email: 'candidate@example.com', password: 'password', name: 'Candidate User', role: 'candidate' as UserRole },
-        { id: '3', email: 'voter@example.com', password: 'password', name: 'Voter User', role: 'voter' as UserRole },
-      ];
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
-      const foundUser = mockUsers.find(u => u.email === email && u.password === password);
-      
-      if (!foundUser) {
-        throw new Error('Invalid credentials');
+      if (error) {
+        throw error;
       }
-      
-      const { password: _, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('ballot_box_user', JSON.stringify(userWithoutPassword));
       
       toast({
         title: "Login successful",
-        description: `Welcome back, ${userWithoutPassword.name}!`,
+        description: "Welcome back!",
       });
       
       navigate('/app');
     } catch (error) {
+      const authError = error as AuthError;
       toast({
         title: "Login failed",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description: authError.message || "An error occurred during login",
         variant: "destructive",
       });
       throw error;
@@ -105,16 +150,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (email: string, password: string, name: string, role: UserRole) => {
     setIsLoading(true);
     try {
-      // Mock registration - replace with Supabase auth after integration
-      const newUser = {
-        id: Math.random().toString(36).substr(2, 9),
-        email,
-        name,
-        role,
-      };
+      // 1. Sign up with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            name,
+            role
+          }
+        }
+      });
       
-      setUser(newUser);
-      localStorage.setItem('ballot_box_user', JSON.stringify(newUser));
+      if (error) {
+        throw error;
+      }
       
       toast({
         title: "Registration successful",
@@ -123,9 +173,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       navigate('/app');
     } catch (error) {
+      const authError = error as AuthError;
       toast({
         title: "Registration failed",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description: authError.message || "An error occurred during registration",
         variant: "destructive",
       });
       throw error;
@@ -135,15 +186,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Logout function
-  const logout = () => {
-    // Clear user from state and localStorage
-    setUser(null);
-    localStorage.removeItem('ballot_box_user');
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out.",
-    });
-    navigate('/');
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout failed",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Helper functions for role checks
@@ -155,6 +215,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider
       value={{
         user,
+        session,
         isLoading,
         isAuthenticated: !!user,
         login,

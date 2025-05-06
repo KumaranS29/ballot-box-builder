@@ -7,13 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Vote } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Redirect if already authenticated
   React.useEffect(() => {
@@ -24,6 +28,7 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsSubmitting(true);
     
     try {
@@ -32,6 +37,11 @@ const Login: React.FC = () => {
     } catch (error) {
       console.error('Login error:', error);
       // Error is handled in the login function (toast)
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An error occurred during login');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -53,6 +63,11 @@ const Login: React.FC = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -91,15 +106,17 @@ const Login: React.FC = () => {
               )}
             </Button>
 
-            {/* Demo account info */}
-            <div className="rounded-md bg-muted p-3 text-sm">
-              <strong>Demo Accounts:</strong>
-              <div className="mt-1 grid gap-1 text-xs">
-                <div>Admin: admin@example.com / password</div>
-                <div>Candidate: candidate@example.com / password</div>
-                <div>Voter: voter@example.com / password</div>
+            {/* Demo account info - Only show in development */}
+            {import.meta.env.DEV && (
+              <div className="rounded-md bg-muted p-3 text-sm">
+                <strong>Demo Accounts:</strong>
+                <div className="mt-1 grid gap-1 text-xs">
+                  <div>Admin: admin@example.com / password</div>
+                  <div>Candidate: candidate@example.com / password</div>
+                  <div>Voter: voter@example.com / password</div>
+                </div>
               </div>
-            </div>
+            )}
           </form>
         </CardContent>
         <CardFooter className="flex justify-center">

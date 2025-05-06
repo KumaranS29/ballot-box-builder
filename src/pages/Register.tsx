@@ -9,6 +9,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Vote } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserRole } from '@/context/AuthContext';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
 
 const Register: React.FC = () => {
   const [name, setName] = useState('');
@@ -16,9 +18,10 @@ const Register: React.FC = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('voter');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [error, setError] = useState<string | null>(null);
   const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Redirect if already authenticated
   React.useEffect(() => {
@@ -29,6 +32,7 @@ const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsSubmitting(true);
     
     try {
@@ -37,6 +41,11 @@ const Register: React.FC = () => {
     } catch (error) {
       console.error('Registration error:', error);
       // Error is handled in the register function (toast)
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An error occurred during registration');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -58,6 +67,11 @@ const Register: React.FC = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
