@@ -25,7 +25,9 @@ const Register: React.FC = () => {
 
   // Redirect if already authenticated
   React.useEffect(() => {
+    console.log("Register page - authenticated status:", isAuthenticated);
     if (isAuthenticated) {
+      console.log("User is authenticated, redirecting to /app");
       navigate('/app');
     }
   }, [isAuthenticated, navigate]);
@@ -36,8 +38,9 @@ const Register: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      console.log("Submitting registration form");
       await register(email, password, name, role);
-      // Navigation is handled in the register function
+      // Navigation is now handled in the AuthContext
     } catch (error) {
       console.error('Registration error:', error);
       // Error is handled in the register function (toast)

@@ -21,7 +21,9 @@ const Login: React.FC = () => {
 
   // Redirect if already authenticated
   React.useEffect(() => {
+    console.log("Login page - authenticated status:", isAuthenticated);
     if (isAuthenticated) {
+      console.log("User is authenticated, redirecting to /app");
       navigate('/app');
     }
   }, [isAuthenticated, navigate]);
@@ -32,8 +34,9 @@ const Login: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      console.log("Submitting login form");
       await login(email, password);
-      // Navigation is handled in the login function
+      // Navigation is now handled in the AuthContext
     } catch (error) {
       console.error('Login error:', error);
       // Error is handled in the login function (toast)

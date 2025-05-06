@@ -1,12 +1,20 @@
 
-import React from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 
 const Layout: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      console.log("Layout - User is not authenticated, redirecting to /login");
+      navigate('/login');
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   // Show loading state
   if (isLoading) {

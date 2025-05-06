@@ -49,17 +49,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Initialize auth state
   useEffect(() => {
+    console.log("Setting up auth state listener");
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log("Auth state changed:", event, currentSession?.user?.id);
         setSession(currentSession);
 
         if (currentSession?.user) {
           // Fetch user profile from our users table
+          try {
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('user_id', currentSession.user.id)
+              .single();
+
+            if (userError || !userData) {
+              console.error('Error fetching user data:', userError);
+              setUser(null);
+              setIsLoading(false);
+            } else {
+              setUser({
+                id: currentSession.user.id,
+                email: currentSession.user.email || '',
+                name: userData.name,
+                role: userData.role as UserRole,
+                profileImage: null  // Since the database doesn't have a profile_image field
+              });
+              setIsLoading(false);
+              
+              if (event === 'SIGNED_IN') {
+                console.log("User signed in, navigating to /app");
+                setTimeout(() => navigate('/app'), 0);
+              }
+            }
+          } catch (error) {
+            console.error("Error in auth state change handler:", error);
+            setUser(null);
+            setIsLoading(false);
+          }
+        } else {
+          setUser(null);
+          setIsLoading(false);
+          
+          if (event === 'SIGNED_OUT') {
+            console.log("User signed out, navigating to /");
+            navigate('/');
+          }
+        }
+      }
+    );
+
+    // Check for existing session
+    const initializeAuth = async () => {
+      try {
+        console.log("Checking for existing session");
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
+        if (initialSession?.user) {
+          // Fetch user profile from our users table
           const { data: userData, error: userError } = await supabase
             .from('users')
             .select('*')
-            .eq('user_id', currentSession.user.id)
+            .eq('user_id', initialSession.user.id)
             .single();
 
           if (userError || !userData) {
@@ -67,48 +120,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(null);
           } else {
             setUser({
-              id: currentSession.user.id,
-              email: currentSession.user.email || '',
+              id: initialSession.user.id,
+              email: initialSession.user.email || '',
               name: userData.name,
               role: userData.role as UserRole,
               profileImage: null  // Since the database doesn't have a profile_image field
             });
           }
-        } else {
-          setUser(null);
         }
         
         setIsLoading(false);
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+        setIsLoading(false);
       }
-    );
-
-    // Check for existing session
-    const initializeAuth = async () => {
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
-      
-      if (initialSession?.user) {
-        // Fetch user profile from our users table
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('user_id', initialSession.user.id)
-          .single();
-
-        if (userError || !userData) {
-          console.error('Error fetching user data:', userError);
-          setUser(null);
-        } else {
-          setUser({
-            id: initialSession.user.id,
-            email: initialSession.user.email || '',
-            name: userData.name,
-            role: userData.role as UserRole,
-            profileImage: null  // Since the database doesn't have a profile_image field
-          });
-        }
-      }
-      
-      setIsLoading(false);
     };
 
     initializeAuth();
@@ -116,12 +141,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   // Login function
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
+      console.log("Attempting login for:", email);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
@@ -133,7 +159,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: "Welcome back!",
       });
       
-      navigate('/app');
+      // Navigation is now handled in the auth state change listener
+      console.log("Login successful, auth state change will handle navigation");
     } catch (error) {
       const authError = error as AuthError;
       toast({
@@ -151,6 +178,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (email: string, password: string, name: string, role: UserRole) => {
     setIsLoading(true);
     try {
+      console.log("Attempting registration for:", email, "with role:", role);
       // 1. Sign up with Supabase Auth
       const { data, error } = await supabase.auth.signUp({ 
         email, 
@@ -172,7 +200,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: `Welcome, ${name}!`,
       });
       
-      navigate('/app');
+      // Navigation is now handled in the auth state change listener
+      console.log("Registration successful, auth state change will handle navigation");
     } catch (error) {
       const authError = error as AuthError;
       toast({
@@ -189,6 +218,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Logout function
   const logout = async () => {
     try {
+      console.log("Attempting logout");
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
@@ -196,7 +226,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         title: "Logged out",
         description: "You have been successfully logged out.",
       });
-      navigate('/');
+      // Navigation is now handled in the auth state change listener
+      console.log("Logout successful, auth state change will handle navigation");
     } catch (error) {
       console.error('Logout error:', error);
       toast({
