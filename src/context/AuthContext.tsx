@@ -14,7 +14,7 @@ export interface AppUser {
   email: string;
   name: string | null;
   role: UserRole;
-  profileImage?: string;
+  profileImage?: string | null;
 }
 
 interface AuthContextType {
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               email: currentSession.user.email || '',
               name: userData.name,
               role: userData.role as UserRole,
-              profileImage: userData.profile_image || undefined,
+              profileImage: null  // Since the database doesn't have a profile_image field
             });
           }
         } else {
@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             email: initialSession.user.email || '',
             name: userData.name,
             role: userData.role as UserRole,
-            profileImage: userData.profile_image || undefined,
+            profileImage: null  // Since the database doesn't have a profile_image field
           });
         }
       }
