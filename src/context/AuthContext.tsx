@@ -3,21 +3,22 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Session, User, AuthError } from '@supabase/supabase-js';
+import { Session, AuthError } from '@supabase/supabase-js';
+import { Tables } from '@/integrations/supabase/types';
 
 // Types
 export type UserRole = 'admin' | 'candidate' | 'voter';
 
-export interface User {
+export interface AppUser {
   id: string;
   email: string;
-  name: string;
+  name: string | null;
   role: UserRole;
   profileImage?: string;
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -40,7 +41,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
@@ -68,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser({
               id: currentSession.user.id,
               email: currentSession.user.email || '',
-              name: userData.name || '',
+              name: userData.name,
               role: userData.role as UserRole,
               profileImage: userData.profile_image || undefined,
             });
@@ -100,7 +101,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser({
             id: initialSession.user.id,
             email: initialSession.user.email || '',
-            name: userData.name || '',
+            name: userData.name,
             role: userData.role as UserRole,
             profileImage: userData.profile_image || undefined,
           });

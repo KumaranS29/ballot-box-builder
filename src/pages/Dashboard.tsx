@@ -30,7 +30,7 @@ const Dashboard: React.FC = () => {
       {/* Welcome Section */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Welcome back, {user?.name}!</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Welcome back, {user?.name || 'User'}!</h2>
           <p className="text-muted-foreground">
             Here's what's happening with your elections today.
           </p>
@@ -120,10 +120,10 @@ const Dashboard: React.FC = () => {
             <CardContent>
               <div className="flex items-center gap-4">
                 <div className="h-16 w-16 rounded-full bg-vote-light flex items-center justify-center text-vote-primary text-2xl font-bold">
-                  {user?.name?.charAt(0).toUpperCase()}
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </div>
                 <div>
-                  <h4 className="font-semibold">{user?.name}</h4>
+                  <h4 className="font-semibold">{user?.name || 'User'}</h4>
                   <p className="text-sm text-muted-foreground">{user?.email}</p>
                 </div>
               </div>

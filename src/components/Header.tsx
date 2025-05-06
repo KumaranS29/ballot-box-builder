@@ -69,7 +69,7 @@ const Header: React.FC = () => {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <div className="h-8 w-8 rounded-full bg-vote-light flex items-center justify-center text-vote-primary font-bold">
-                {user?.name?.charAt(0).toUpperCase()}
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
               </div>
             </Button>
           </DropdownMenuTrigger>

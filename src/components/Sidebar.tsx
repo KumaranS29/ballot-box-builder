@@ -56,11 +56,11 @@ const Sidebar: React.FC = () => {
         collapsed ? "justify-center" : "justify-start"
       )}>
         <div className="h-10 w-10 rounded-full bg-vote-light flex items-center justify-center text-vote-primary font-bold">
-          {user?.name?.charAt(0).toUpperCase()}
+          {user?.name?.charAt(0)?.toUpperCase() || 'U'}
         </div>
         {!collapsed && (
           <div className="ml-3 overflow-hidden">
-            <p className="truncate font-medium">{user?.name}</p>
+            <p className="truncate font-medium">{user?.name || 'User'}</p>
             <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
           </div>
         )}
